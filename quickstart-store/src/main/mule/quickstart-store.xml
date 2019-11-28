@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd ">
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
     <flow name="quickstart-store-main">
         <http:listener doc:name="Listener" doc:id="8a8e0856-e51f-415e-9d27-35625e012bba" config-ref="quickstart-store-httpListenerConfig" path="/api/*"/>
 		<apikit:router config-ref="quickstart-store-config"/>
@@ -112,44 +114,42 @@ output application/json
         </error-handler>
     </flow>
     <flow name="get:\products\(productId):quickstart-store-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core">
-            <ee:variables>
-                <ee:set-variable variableName="productId">attributes.uriParams.'productId'</ee:set-variable>
-            </ee:variables>
-        </ee:transform>
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
+        <db:select doc:name="SELECT PRODUCT BY ID" doc:id="df11cc21-c0a6-4196-90bf-f4194f9185b9" config-ref="Products_Config">
+			<db:sql >SELECT 
+product.*,
+CONCAT('[&quot;', (GROUP_CONCAT(variant.picture SEPARATOR '&quot;, &quot;')),'&quot;]') AS pictures,
+CONCAT('[', GROUP_CONCAT('{&quot;',variant.identifierType, '&quot;:&quot;', variant.identifier, '&quot;}'),']') AS identifiers
+FROM product
+INNER JOIN variant ON product.uuid = variant.productUUID
+WHERE product.uuid = :id;</db:sql>
+			<db:input-parameters ><![CDATA[#[{'id' : attributes.uriParams.productId}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="072958df-66dc-4310-a911-e377c0df55cf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0 // The version
+output application/json // The mime-type of the output
+var product = payload[0] // Setting a variable called product with a value of the first item of query's payload
 ---
 {
-  brand: "Anypoint",
-  identifier: "eb8c8ca7-3c42-4489-a820-3aa138430b75",
-  identifiers: [
-    {
-      SKU: "UGG-BB-PUR-06"
-    }
-  ],
-  model: "Smart Slim Micro Stripe Shirt",
-  rating: 5,
-  description: "Shirt by ASOS Tall. Stripe woven fabric. Added stretch for comfort. Spread collar. Button placket. Slim fit - cut close to the body. Machine wash. 98% Cotton, 2% Elastane. Our model wears a size Medium Long and is 193cm/6'4\" tall",
-  pictures: [
-    "https://launderkart.com/wp-content/uploads/2016/07/Shirt.jpg", 
-    "https://cdni.llbean.net/is/image/wim/251423_47_41?wid=428&hei=494"
-  ],
-  price: {
-    amount: {
-      currency: "USD",
-      currencyValue: 34.90,
-      name: "Amount"
-    },
-    salesUnit: {
-      code: "EA",
-      name: "Each"
-    }
-  }
+	identifier: product.uuid,
+	identifiers: read(product.identifiers default "[]","application/json"), // Parsing this string to a JSON object. If null, defaults to empty array to avoid a null exception.
+	price: {
+		amount: {
+			currencyValue: product.currencyValue,
+			name: product.currencyName default "Amount", // Setting a default value if value is null
+			currency: product.currency
+		},
+		salesUnit: {
+			code: product.salesUnitCode,
+			name: product.salesUnitName
+		}
+	},
+	description: product.description,
+	model: product.model,
+	brand: product.brand,
+	pictures: read(product.pictures default "[]","application/json") // Parsing this string to a JSON object. If null, defaults to empty array to avoid a null exception.
 }]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+			</ee:message>
+		</ee:transform>
     </flow>
 </mule>
