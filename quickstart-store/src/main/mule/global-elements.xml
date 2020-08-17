@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+	<http:listener-config name="quickstart-store-httpListenerConfig" doc:name="HTTP Listener config" doc:id="75328c5e-fe92-4981-a586-cf1ab48682a1" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<apikit:config outboundHeadersMapName="outboundHeadersMapName" httpStatusVarName="httpStatus" doc:name="Router" doc:id="b7b7bf37-8eda-4daa-84cd-8852c9ec5e81" name="quickstart-store-config" api="quickstart-store.raml" />
+	<db:config name="Products_Config" doc:name="Database Config" doc:id="ba05fc17-4b0b-437f-a5ca-40d8b4ac6cfd" >
+		<db:my-sql-connection host="congo.devrel.mulesoft.com" port="3306" user="mulesoft" password="mulesoft" database="products?useSSL=false&amp;autoReconenct=true" />
+	</db:config>
+	<api-gateway:autodiscovery apiId="15895950" doc:name="API Autodiscovery" doc:id="16e528dd-169a-4ff6-9f0c-6b6f4d34cab7" flowRef="quickstart-store-main" />
+</mule>
